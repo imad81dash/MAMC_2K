@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MAMC 2K | Global Network</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -12,7 +12,37 @@
         :root { --primary: #2c3e50; --accent: #3498db; --marker-green: #2ecc71; --bg-sidebar: #ffffff; --text-main: #333; --text-light: #7f8c8d; --border: #ecf0f1; --btn-bg: #f8f9fa; }
         [data-theme="dark"] { --primary: #ecf0f1; --accent: #e74c3c; --marker-green: #27ae60; --bg-sidebar: #1a1a1a; --text-main: #ecf0f1; --text-light: #95a5a6; --border: #2c3e50; --btn-bg: #333; }
         body { margin: 0; padding: 0; font-family: "Inter", sans-serif; display: flex; height: 100vh; overflow: hidden; background-color: #1a1a1a; }
-        #sidebar { width: 350px; background: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 1000; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
+        
+        /* --- DESKTOP LAYOUT --- */
+        #sidebar { width: 350px; background: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 1000; box-shadow: 2px 0 10px rgba(0,0,0,0.1); transition: transform 0.3s ease; }
+        #map-container { flex: 1; position: relative; background-color: #262626; }
+        #map { width: 100%; height: 100%; }
+
+        /* --- MOBILE LAYOUT (Responsive Overrides) --- */
+        @media (max-width: 768px) {
+            body { flex-direction: column-reverse; } /* Map on top, sidebar on bottom */
+            
+            #sidebar {
+                width: 100%;
+                height: 40%; /* Take up bottom 40% */
+                border-right: none;
+                border-top: 1px solid var(--border);
+                position: relative;
+                z-index: 2000;
+            }
+            
+            #map-container {
+                height: 60%; /* Take up top 60% */
+                width: 100%;
+            }
+
+            .header { padding: 10px 15px; }
+            .header h1 { font-size: 1rem; }
+            .stats-bar { padding: 10px 15px; }
+            .search-container { padding: 10px 15px; }
+            .alumni-item { padding: 10px 15px; }
+        }
+
         .header { padding: 20px; border-bottom: 1px solid var(--border); background: linear-gradient(135deg, #2c3e50, #34495e); color: white; }
         .header h1 { margin: 0; font-size: 1.2rem; font-weight: 600; }
         .header p { margin: 5px 0 0; font-size: 0.8rem; opacity: 0.8; }
@@ -32,8 +62,7 @@
         .alumni-item .location { font-size: 0.75rem; color: var(--text-light); }
         .profile-link { display: inline-block; margin-top: 8px; font-size: 0.75rem; color: var(--accent); text-decoration: none; border: 1px solid var(--accent); padding: 2px 8px; border-radius: 4px; }
         .profile-link:hover { background-color: var(--accent); color: white; }
-        #map-container { flex: 1; position: relative; background-color: #262626; }
-        #map { width: 100%; height: 100%; }
+        
         .country-marker { background-color: var(--marker-green); border: 2px solid white; border-radius: 50%; text-align: center; color: white; box-shadow: 0 0 15px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; transition: all 0.4s ease; z-index: 500; cursor: pointer; }
         .country-marker:hover { transform: scale(1.1); }
         .country-marker.dimmed { opacity: 0.2 !important; filter: grayscale(100%) blur(0.5px); transform: scale(0.9); z-index: 100; }
@@ -277,9 +306,11 @@
 
         // --- APP LOGIC ---
         const map = L.map("map", { zoomControl: false, minZoom: 2, maxBounds: [[-90,-180],[90,180]] }).setView([20,0], 2);
-        L.control.zoom({ position: "bottomright" }).addTo(map);
         
-        // STANDARD DARK TILES (No Masking)
+        // Adjust zoom control position for mobile
+        const zoomPosition = window.innerWidth < 768 ? "topright" : "bottomright";
+        L.control.zoom({ position: zoomPosition }).addTo(map);
+        
         L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { 
             attribution: "&copy; OpenStreetMap &copy; CARTO", 
             subdomains: "abcd", 
@@ -329,12 +360,13 @@
             renderList("", g.students.map(s => s.id));
             
             const sorted = [...g.students].sort((a,b) => a.id - b.id);
-            const startLat = g.center[0] + (Math.ceil(sorted.length/2)*3.0)/2 - 1.5;
+            const rowHeight = 5.0; 
+            const startLat = g.center[0] + (Math.ceil(sorted.length/2)*rowHeight)/2 - (rowHeight/2);
             
             sorted.forEach((s, i) => {
                 const isRight = i % 2 === 0;
                 const row = Math.floor(i / 2);
-                const dLat = startLat - (row * 3.0);
+                const dLat = startLat - (row * rowHeight);
                 const dLng = g.center[1] + (12.0 * (isRight ? 1 : -1));
                 
                 const line = L.polyline([g.center, [dLat, dLng]], { color: "#e74c3c", weight: 1, opacity: 0.6, interactive: false });
